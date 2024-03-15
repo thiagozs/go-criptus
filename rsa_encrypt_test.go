@@ -8,9 +8,10 @@ import (
 
 func TestRsaEncrypt(t *testing.T) {
 	secret := "this is a secret"
-	rsa := NewRsaEncrypt(RsaBits1024, "", "", "", "")
+	rsa, err := NewRsaEncrypt()
+	assert.NoError(t, err)
 
-	err := rsa.SaveRsaKey()
+	err = rsa.SaveRsaKey()
 	assert.NoError(t, err)
 
 	sec, err := rsa.RsaEncrypt(secret, rsa.PublishKeyPath)

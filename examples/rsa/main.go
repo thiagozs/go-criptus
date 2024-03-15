@@ -9,7 +9,12 @@ import (
 func main() {
 	secret := "this is a secret"
 
-	rsa := criptus.NewRsaEncrypt(criptus.RsaBits1024, "", "", "", "")
+	rsa, err := criptus.NewRsaEncrypt()
+	if err != nil {
+		fmt.Println("Error: ", err)
+		return
+	}
+
 	if err := rsa.SaveRsaKey(); err != nil {
 		fmt.Println("Error: ", err)
 		return

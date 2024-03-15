@@ -16,21 +16,28 @@ type TripleDesEncrypt struct {
 	KeyType     TripleKeyType
 }
 
-func NewTripleDesEncrypt(specialSign, key string) (*TripleDesEncrypt, error) {
-	if len(key) == 0 {
+func New3DESEncrypt(opts ...T3DESOptions) (*TripleDesEncrypt, error) {
+
+	params, err := newT3DESParams(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(params.GetKey()) == 0 {
 		return nil, errors.New("need the key to encrypt, please add it. ")
 	}
 
-	if len(specialSign) == 0 {
-		specialSign = BaseSpecialSign
+	if len(params.GetSpecialSign()) == 0 {
+		params.SetSpecialSign(BaseSpecialSign)
 	}
 
-	specialSign = formatSpecialSign(specialSign, key, TripleEncrypt)
+	specialSign := formatSpecialSign(params.GetSpecialSign(),
+		params.GetKey(), params.GetKind())
 
 	return &TripleDesEncrypt{
 		SpecialSign: specialSign,
-		Key:         key,
-		KeyType:     TripleEncrypt,
+		Key:         params.GetKey(),
+		KeyType:     params.GetKind(),
 	}, nil
 }
 

@@ -52,7 +52,15 @@ func TestAesSecret(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			e, err := NewAesEncrypt(c.specialSign, c.key, "", c.kind, c.mode)
+
+			opts := []AESOptions{
+				AESWithKey(c.key),
+				AESWithAesKeyType(c.kind),
+				AESWithAesModeType(c.mode),
+				AESWithSpecialSign(c.specialSign),
+			}
+
+			e, err := NewAESEncrypt(opts...)
 			if err != nil {
 				t.Errorf("Error: %s\n", err)
 			}

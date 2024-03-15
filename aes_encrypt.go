@@ -16,42 +16,45 @@ type AesEncrypt struct {
 	// of characters, if not, it will be based on AesBaseSpecialSign.
 	SpecialSign     string
 	Key             string // Key, it is recommended to use a 5-8 digit key
-	IV              string // Initial vector 16 bytes
+	IV              string // Initial Vector 16 bytes
 	AesModeType     AesModeType
 	AesKeyType      AesKeyType
 	AesKey          []byte
-	AesKeyLength    int
 	PlainTextLength int
 }
 
-func NewAesEncrypt(specialSign, key, iv string,
-	aesKeyType AesKeyType, aesModeType AesModeType) (*AesEncrypt, error) {
+func NewAESEncrypt(opts ...AESOptions) (*AesEncrypt, error) {
 
-	if len(key) == 0 {
+	params, err := newAESParams(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(params.GetKey()) == 0 {
 		return nil, errors.New("need the key to encrypt, please add it. ")
 	}
 
-	if len(specialSign) == 0 {
-		specialSign = BaseSpecialSign
+	if len(params.GetSpecialSign()) == 0 {
+		params.SetSpecialSign(BaseSpecialSign)
 	}
 
-	specialSign = formatSpecialSign(specialSign, key, aesKeyType)
+	specialSign := formatSpecialSign(params.GetSpecialSign(),
+		params.GetKey(), params.GetAesKeyType())
 
-	if iv == "" {
-		iv = specialSign + key
+	if len(params.GetIV()) == 0 {
+		params.SetIV(specialSign + params.GetKey())
 	}
 
-	if len(iv) > IVLength {
-		iv = iv[:IVLength]
+	if len(params.GetIV()) > IVLength {
+		params.SetIV(params.GetIV()[:IVLength])
 	}
 
 	return &AesEncrypt{
-		SpecialSign:  specialSign,
-		Key:          key,
-		IV:           iv,
-		AesModeType:  aesModeType,
-		AesKeyType:   aesKeyType,
-		AesKeyLength: aesKeyType.Length(),
+		SpecialSign: specialSign,
+		Key:         params.GetKey(),
+		IV:          params.GetIV(),
+		AesModeType: params.GetAesModeType(),
+		AesKeyType:  params.GetAesKeyType(),
 	}, nil
 }
 
@@ -63,8 +66,8 @@ func (a *AesEncrypt) getPrefix(length int) string {
 }
 
 func (a *AesEncrypt) generateAesKey() []byte {
-	length := a.AesKeyLength - len(a.Key)
-	buf := make([]byte, 0, a.AesKeyLength)
+	length := int(a.AesKeyType.Length() - len(a.Key))
+	buf := make([]byte, 0, a.AesKeyType.Length())
 	prefix := a.getPrefix(length)
 	buf = append(buf, []byte(prefix)...)
 	buf = append(buf, []byte(a.Key)...)
@@ -206,7 +209,7 @@ func (a *AesEncrypt) aesDecrypterCFB(decodeStr string, block cipher.Block) (stri
 func (a *AesEncrypt) aesEncrypterECB(encodeStr string, block cipher.Block) (string, error) {
 	size := block.BlockSize()
 
-	data := PKCS7Padding([]byte(encodeStr), size)
+	data := pkcs7Padding([]byte(encodeStr), size)
 
 	encrypted := make([]byte, len(data))
 
@@ -231,7 +234,7 @@ func (a *AesEncrypt) aesDecrypterECB(encodeStr string, block cipher.Block) (stri
 		block.Decrypt(decrypted[bs:be], data[bs:be])
 	}
 
-	return string(PKCS7UnPadding(decrypted)), nil
+	return string(pkcs7UnPadding(decrypted)), nil
 }
 
 func (a *AesEncrypt) aesEncrypterCTR(plainText string, block cipher.Block) (string, error) {

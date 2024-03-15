@@ -2,7 +2,7 @@ package criptus
 
 import "log"
 
-var BaseSpecialSign = "!@a%$bc.de,l%$fgqweruriskn&#@xl784zm321apgiw"
+var BaseSpecialSign = "2bhw#jfQb%W%PxbcuTPx1fD5ND3dAd4pVZUv$PMBJDJkK"
 var BaseSpecialSignLength = len(BaseSpecialSign)
 
 func formatSpecialSign(specialSign, key string, kind any) string {

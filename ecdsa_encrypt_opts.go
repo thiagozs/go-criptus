@@ -30,6 +30,6 @@ func (p ECDSAParams) GetCurve() elliptic.Curve {
 	return p.curve.Curve()
 }
 
-func (p ECDSAParams) SetCurve(curve EllipticCurveType) {
+func (p *ECDSAParams) SetCurve(curve EllipticCurveType) {
 	p.curve = curve
 }

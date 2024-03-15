@@ -10,7 +10,7 @@ func main() {
 
 	secret := "this is a secret"
 
-	des, err := criptus.NewTripleDesEncrypt(criptus.BaseSpecialSign, "123456")
+	des, err := criptus.New3DESEncrypt(criptus.T3DESWithKey("123456"))
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return

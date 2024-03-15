@@ -34,15 +34,15 @@ func TestPKCS7PaddingAndUnpadding(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			padded := PKCS7Padding(tc.input, tc.blockSize)
+			padded := pkcs7Padding(tc.input, tc.blockSize)
 
 			if !bytes.Equal(padded, tc.wantPadded) {
-				t.Errorf("PKCS7Padding() = %v, want %v", padded, tc.wantPadded)
+				t.Errorf("pkcs7Padding() = %v, want %v", padded, tc.wantPadded)
 			}
 
-			unpadded := PKCS7UnPadding(padded)
+			unpadded := pkcs7UnPadding(padded)
 			if !bytes.Equal(unpadded, tc.input) {
-				t.Errorf("PKCS7UnPadding() = %v, want %v", unpadded, tc.input)
+				t.Errorf("pkcs7UnPadding() = %v, want %v", unpadded, tc.input)
 			}
 		})
 	}

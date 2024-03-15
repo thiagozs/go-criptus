@@ -11,7 +11,12 @@ func Test3DesEncrypt(t *testing.T) {
 	key := "112233"
 	secret := "this is a secret"
 
-	tDesEncrypt, err := NewTripleDesEncrypt(specialSign, key)
+	opts := []T3DESOptions{
+		T3DESWithKey(key),
+		T3DESWithSpecialSign(specialSign),
+	}
+
+	tDesEncrypt, err := New3DESEncrypt(opts...)
 	assert.NoError(t, err)
 
 	ans, err := tDesEncrypt.SecretEncrypt(secret, 12)

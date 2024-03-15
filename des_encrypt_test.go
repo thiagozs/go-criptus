@@ -11,7 +11,13 @@ func TestDesSecret(t *testing.T) {
 	key := "458796"
 	secret := "this is a secret"
 
-	des, err := NewDesEncrypt(specialSign, key)
+	opts := []DESOptions{
+		DESWithKey(key),
+		DESWithSpecialSign(specialSign),
+		DESWithKeyType(DesEncrypt56),
+	}
+
+	des, err := NewDesEncrypt(opts...)
 	assert.NoError(t, err)
 
 	str, err := des.SecretEncrypt(secret)

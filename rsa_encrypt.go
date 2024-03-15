@@ -10,16 +10,6 @@ import (
 	"os"
 )
 
-type RsaBitsType int
-
-const (
-	RsaBits512     RsaBitsType = 512
-	RsaBits1024    RsaBitsType = 1024
-	RsaBits2048    RsaBitsType = 2048
-	RsaBits4096    RsaBitsType = 4096
-	RsaDefaultBits             = RsaBits1024
-)
-
 const (
 	RsaDefaultPublishKeyName = "publishKey"
 	RsaDefaultPrivateKeyName = "privateKey"
@@ -29,18 +19,11 @@ const (
 )
 
 type RsaEncrypt struct {
-	Bits           RsaBitsType
 	PublishKeyName string
 	PrivateKeyName string
 	PublishKeyPath string
 	PrivateKeyPath string
-}
-
-var RsaBitsMap = map[RsaBitsType]int{
-	RsaBits512:  512,
-	RsaBits1024: 1024,
-	RsaBits2048: 2048,
-	RsaBits4096: 4096,
+	Kind           RsaBitsType
 }
 
 func formatPubAndPriKeyName(name string) string {
@@ -50,7 +33,7 @@ func formatPubAndPriKeyName(name string) string {
 func NewDefaultRsaEncrypt() *RsaEncrypt {
 	defaultPath, _ := os.Getwd()
 	return &RsaEncrypt{
-		Bits:           RsaDefaultBits,
+		Kind:           RsaBits1024,
 		PublishKeyName: formatPubAndPriKeyName(RsaDefaultPublishKeyName),
 		PrivateKeyName: formatPubAndPriKeyName(RsaDefaultPrivateKeyName),
 		PublishKeyPath: defaultPath + formatPubAndPriKeyName(RsaDefaultPublishKeyName),
@@ -58,30 +41,41 @@ func NewDefaultRsaEncrypt() *RsaEncrypt {
 	}
 }
 
-func NewRsaEncrypt(bits RsaBitsType, publishKeyName, publishKeyPath,
-	privateKeyName, privateKeyPath string) *RsaEncrypt {
-	obj := NewDefaultRsaEncrypt()
-	if bits != 0 {
-		obj.Bits = bits
+func NewRsaEncrypt(opts ...RSAOptions) (*RsaEncrypt, error) {
+
+	params, err := newRSAParams(opts...)
+	if err != nil {
+		return nil, err
 	}
 
-	if publishKeyName != "" {
-		obj.PublishKeyName = formatPubAndPriKeyName(publishKeyName)
+	obj := NewDefaultRsaEncrypt()
+	if bits := params.GetBits(); bits == 0 {
+		obj.Kind = bits
 	}
-	if publishKeyPath != "" {
-		obj.PublishKeyPath = publishKeyPath + formatPubAndPriKeyName(publishKeyName)
+
+	if params.GetPublishKeyName() != "" {
+		obj.PublishKeyName = formatPubAndPriKeyName(params.GetPublishKeyName())
 	}
-	if privateKeyName != "" {
-		obj.PrivateKeyName = formatPubAndPriKeyName(privateKeyName)
+
+	if params.GetPublishKeyPath() != "" {
+		obj.PublishKeyPath = params.GetPublishKeyPath() +
+			formatPubAndPriKeyName(params.GetPublishKeyName())
 	}
-	if privateKeyPath != "" {
-		obj.PrivateKeyPath = privateKeyPath + formatPubAndPriKeyName(privateKeyName)
+
+	if params.GetPrivateKeyName() != "" {
+		obj.PrivateKeyName = formatPubAndPriKeyName(params.GetPrivateKeyName())
 	}
-	return obj
+
+	if params.GetPrivateKeyPath() != "" {
+		obj.PrivateKeyPath = params.GetPrivateKeyPath() +
+			formatPubAndPriKeyName(params.GetPrivateKeyName())
+	}
+
+	return obj, nil
 }
 
 func (r *RsaEncrypt) SaveRsaKey() error {
-	privateKey, err := rsa.GenerateKey(rand.Reader, RsaBitsMap[r.Bits])
+	privateKey, err := rsa.GenerateKey(rand.Reader, r.Kind.Bits())
 	if err != nil {
 		fmt.Println(err)
 		return err

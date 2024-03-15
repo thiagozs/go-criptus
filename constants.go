@@ -7,10 +7,13 @@ type AesModeType int
 type DesKeyType int
 type TripleKeyType int
 type EllipticCurveType int
+type RsaBitsType int
 
 const (
-	IVLength = 16
+	IVLength int = 16
 )
+
+// 3DES configs ----
 
 const (
 	TripleEncrypt TripleKeyType = iota
@@ -28,6 +31,8 @@ func (a TripleKeyType) Block() int {
 	return [...]int{8}[a]
 }
 
+// DES configs ----
+
 const (
 	DesEncrypt56 DesKeyType = iota
 )
@@ -39,6 +44,8 @@ func (a DesKeyType) String() string {
 func (a DesKeyType) Length() int {
 	return [...]int{8}[a]
 }
+
+// AES configs ----
 
 const (
 	AesEncrypt128 AesKeyType = iota
@@ -70,6 +77,8 @@ func (a AesModeType) String() string {
 	return [...]string{"CBC", "CFB", "CTR", "OFB", "ECB"}[a]
 }
 
+// ECDSA configs ----
+
 const (
 	EllipticCurveP224 EllipticCurveType = iota
 	EllipticCurveP256
@@ -88,4 +97,21 @@ func (e EllipticCurveType) Bits() int {
 func (e EllipticCurveType) Curve() elliptic.Curve {
 	return [...]elliptic.Curve{elliptic.P224(), elliptic.P256(),
 		elliptic.P384(), elliptic.P521()}[e]
+}
+
+// RSA configs ----
+
+const (
+	RsaBits512 RsaBitsType = iota
+	RsaBits1024
+	RsaBits2048
+	RsaBits4096
+)
+
+func (r RsaBitsType) String() string {
+	return [...]string{"RSA-512", "RSA-1024", "RSA-2048", "RSA-4096"}[r]
+}
+
+func (r RsaBitsType) Bits() int {
+	return [...]int{512, 1024, 2048, 4096}[r]
 }

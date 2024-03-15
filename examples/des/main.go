@@ -11,7 +11,8 @@ func main() {
 	key := "458796"
 	secret := "this is a secret"
 
-	des, err := criptus.NewDesEncrypt(specialSign, key)
+	des, err := criptus.NewDesEncrypt(criptus.DESWithKey(key),
+		criptus.DESWithSpecialSign(specialSign))
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return

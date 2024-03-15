@@ -17,20 +17,31 @@ type DesEncrypt struct {
 	Key         string // Key, it is recommended to use a 5-8 digit key
 }
 
-func NewDesEncrypt(specialSign, key string) (*DesEncrypt, error) {
-	if len(key) == 0 {
+func NewDesEncrypt(opts ...DESOptions) (*DesEncrypt, error) {
+
+	params, err := newDESParams(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(params.GetKey()) == 0 {
 		return nil, errors.New("need the key to encrypt, please add it. ")
 	}
 
-	if len(specialSign) == 0 {
-		specialSign = BaseSpecialSign
+	if len(params.GetSpecialSign()) == 0 {
+		params.SetSpecialSign(BaseSpecialSign)
 	}
 
-	specialSign = formatSpecialSign(specialSign, key, DesEncrypt56)
+	if params.GetKeyType() == 0 {
+		params.SetKeyType(DesEncrypt56)
+	}
+
+	specialSign := formatSpecialSign(params.GetSpecialSign(),
+		params.GetKey(), params.GetKeyType())
 
 	return &DesEncrypt{
 		SpecialSign: specialSign,
-		Key:         key,
+		Key:         params.GetKey(),
 	}, nil
 }
 
@@ -76,15 +87,18 @@ func (d *DesEncrypt) SecretDecrypt(secret interface{}, fields ...interface{}) (s
 	for i := range fields {
 		number += fields[i].(int)
 	}
-	if secret != "" {
-		aesKey := d.generateDesKey(number)
-		b, err := d.desDecrypt(cast.ToString(secret), aesKey)
-		if err != nil {
-			return "", nil
-		}
-		return string(b), nil
+
+	if secret == "" {
+		return "", errors.New("need the secret to decrypt")
 	}
-	return "", errors.New("need the secret to decrypt")
+
+	aesKey := d.generateDesKey(number)
+	b, err := d.desDecrypt(cast.ToString(secret), aesKey)
+	if err != nil {
+		return "", nil
+	}
+
+	return string(b), nil
 }
 
 func (d *DesEncrypt) desEncrypt(origData string, key []byte) (string, error) {
