@@ -23,6 +23,10 @@ func New3DESEncrypt(opts ...T3DESOptions) (*TripleDesEncrypt, error) {
 		return nil, err
 	}
 
+	if params.GetKind() == 0 {
+		params.SetKind(TripleEncrypt128)
+	}
+
 	if len(params.GetKey()) == 0 {
 		return nil, errors.New("need the key to encrypt, please add it. ")
 	}
@@ -49,36 +53,49 @@ func (t *TripleDesEncrypt) getPrefix(length int) string {
 	return t.SpecialSign[:length]
 }
 
-func (t *TripleDesEncrypt) generateTripleDesKey(id interface{}) []byte {
-	idStr := cast.ToString(id)
-	length := t.KeyType.Length() - len(idStr) - len(t.Key)
+func (t *TripleDesEncrypt) generateDesKey() ([]byte, error) {
+	var key []byte
 
-	buf := make([]byte, 0, t.KeyType.Length())
+	switch t.KeyType {
+	case TripleEncrypt128:
+		// For 128-bit keys, use K1 and K2, and repeat K1
+		if len(t.Key) < 16 { // Ensure the base key is at least 16 bytes
+			return nil, errors.New("base key too short for 128-bit encryption")
+		}
 
-	prefix := t.getPrefix(length)
+		// Use the first 8 bytes for K1 and the next 8 bytes for K2
+		K1 := t.Key[:8]
+		K2 := t.Key[8:16]
 
-	buf = append(buf, []byte(prefix)...)
-	buf = append(buf, []byte(idStr)...)
-	buf = append(buf, []byte(t.Key)...)
+		// K1, K2
+		key = append([]byte(K1), []byte(K2)...)
+		// Repeat K1 to form K1, K2, K1
+		key = append(key, []byte(K1)...)
 
-	if len(buf) > 24 {
-		buf = buf[:t.KeyType.Length()+1]
+	case TripleEncrypt192:
+		if len(t.Key) < 24 { // Ensure the base key is at least 24 bytes
+			return nil, errors.New("base key too short for 192-bit encryption")
+		}
+
+		// Use the first 24 bytes directly for K1, K2, K3
+		key = []byte(t.Key[:24])
+
+	default:
+		return nil, errors.New("invalid key type")
 	}
 
-	return buf
+	return key, nil
 }
 
-func (t *TripleDesEncrypt) SecretEncrypt(secret interface{}, fields ...interface{}) (string, error) {
-	number := 0
-	for i := range fields {
-		number += fields[i].(int)
-	}
-
+func (t *TripleDesEncrypt) SecretEncrypt(secret interface{}) (string, error) {
 	if secret == nil {
 		return "", errors.New("need the secret to encrypt")
 	}
 
-	desKey := t.generateTripleDesKey(number)
+	desKey, err := t.generateDesKey()
+	if err != nil {
+		return "", err
+	}
 
 	ans, err := t.tripleDesEncrypt(cast.ToString(secret), desKey)
 	if err != nil {
@@ -88,30 +105,27 @@ func (t *TripleDesEncrypt) SecretEncrypt(secret interface{}, fields ...interface
 	return ans, nil
 }
 
-func (t *TripleDesEncrypt) SecretDecrypt(secret interface{}, fields ...interface{}) (string, error) {
-	number := 0
-	for i := range fields {
-		number += fields[i].(int)
-	}
-
+func (t *TripleDesEncrypt) SecretDecrypt(secret interface{}) (string, error) {
 	if secret == "" {
 		return "", errors.New("need the secret to decrypt")
 	}
 
-	aesKey := t.generateTripleDesKey(number)
+	aesKey, err := t.generateDesKey()
+	if err != nil {
+		return "", err
+	}
 
 	b, err := t.tripleDesDecrypt(cast.ToString(secret), aesKey)
-
 	if err != nil {
 		return "", nil
 	}
 
 	return string(b), nil
-
 }
 
 func (t *TripleDesEncrypt) tripleDesEncrypt(origData string, key []byte) (string, error) {
 	encodeByte := []byte(origData)
+
 	block, err := des.NewTripleDESCipher(key)
 	if err != nil {
 		return "", err

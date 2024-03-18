@@ -16,29 +16,31 @@ const (
 // 3DES configs ----
 
 const (
-	TripleEncrypt TripleKeyType = iota
+	TripleEncrypt128 TripleKeyType = iota // For 128-bit (16 bytes), typically structured as K1, K2, K1
+	TripleEncrypt192                      // For 192-bit (24 bytes), structured as K1, K2, K3
 )
 
 func (a TripleKeyType) String() string {
-	return [...]string{"3DES"}[a]
+	return [...]string{"3DES-128", "3DES-192"}[a]
 }
 
 func (a TripleKeyType) Length() int {
-	return [...]int{24}[a]
+	// 16 bytes for 128-bit, 24 bytes for 192-bit
+	return [...]int{16, 24}[a]
 }
 
 func (a TripleKeyType) Block() int {
-	return [...]int{8}[a]
+	return 8 // 3DES block size is 8 bytes for both key lengths
 }
 
 // DES configs ----
 
 const (
-	DesEncrypt56 DesKeyType = iota
+	DesEncrypt64 DesKeyType = iota
 )
 
 func (a DesKeyType) String() string {
-	return [...]string{"DES-56"}[a]
+	return [...]string{"DES-64"}[a]
 }
 
 func (a DesKeyType) Length() int {

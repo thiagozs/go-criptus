@@ -10,19 +10,24 @@ func main() {
 
 	secret := "this is a secret"
 
-	des, err := criptus.New3DESEncrypt(criptus.T3DESWithKey("123456"))
+	opts := []criptus.T3DESOptions{
+		criptus.T3DESWithKey("123456789012345678901234"),
+		criptus.T3DESWithKind(criptus.TripleEncrypt128),
+	}
+
+	des, err := criptus.New3DESEncrypt(opts...)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return
 	}
 
-	a, err := des.SecretEncrypt(secret, 12, 1, 2, 3, 4)
+	a, err := des.SecretEncrypt(secret)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return
 	}
 
-	b, err := des.SecretDecrypt(a, 12, 1, 2, 3, 4)
+	b, err := des.SecretDecrypt(a)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return

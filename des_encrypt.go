@@ -3,18 +3,19 @@ package criptus
 import (
 	"crypto/cipher"
 	"crypto/des"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/spf13/cast"
 )
 
-const DesKeyLength = 8
-
 type DesEncrypt struct {
 	SpecialSign string // Encryption and decryption will be based on this string of characters, if not, it will be based on DesBaseSpecialSign.
 	Key         string // Key, it is recommended to use a 5-8 digit key
+	Kind        DesKeyType
 }
 
 func NewDesEncrypt(opts ...DESOptions) (*DesEncrypt, error) {
@@ -33,7 +34,7 @@ func NewDesEncrypt(opts ...DESOptions) (*DesEncrypt, error) {
 	}
 
 	if params.GetKeyType() == 0 {
-		params.SetKeyType(DesEncrypt56)
+		params.SetKeyType(DesEncrypt64)
 	}
 
 	specialSign := formatSpecialSign(params.GetSpecialSign(),
@@ -42,6 +43,7 @@ func NewDesEncrypt(opts ...DESOptions) (*DesEncrypt, error) {
 	return &DesEncrypt{
 		SpecialSign: specialSign,
 		Key:         params.GetKey(),
+		Kind:        params.GetKeyType(),
 	}, nil
 }
 
@@ -54,14 +56,14 @@ func (d *DesEncrypt) getPrefix(length int) string {
 
 func (d *DesEncrypt) generateDesKey(id interface{}) []byte {
 	idStr := cast.ToString(id)
-	length := DesKeyLength - len(idStr) - len(d.Key)
-	buf := make([]byte, 0, DesKeyLength)
+	length := d.Kind.Length() - len(idStr) - len(d.Key)
+	buf := make([]byte, 0, d.Kind.Length())
 	prefix := d.getPrefix(length)
 	buf = append(buf, []byte(prefix)...)
 	buf = append(buf, []byte(idStr)...)
 	buf = append(buf, []byte(d.Key)...)
 	if len(buf) > 8 {
-		buf = buf[:DesKeyLength+1]
+		buf = buf[:d.Kind.Length()+1]
 	}
 	return buf
 }
@@ -102,20 +104,27 @@ func (d *DesEncrypt) SecretDecrypt(secret interface{}, fields ...interface{}) (s
 }
 
 func (d *DesEncrypt) desEncrypt(origData string, key []byte) (string, error) {
-	encodeByte := []byte(origData)
-
 	block, err := des.NewCipher(key)
 	if err != nil {
 		return "", err
 	}
 
-	encodeByte = pkcs5Padding(encodeByte, block.BlockSize())
-	blockMode := cipher.NewCBCEncrypter(block, key)
+	// Generate a random IV
+	iv := make([]byte, block.BlockSize())
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		return "", err
+	}
+
+	encodeByte := pkcs5Padding([]byte(origData), block.BlockSize())
+	blockMode := cipher.NewCBCEncrypter(block, iv)
 
 	crypted := make([]byte, len(encodeByte))
 	blockMode.CryptBlocks(crypted, encodeByte)
 
-	hexStr := fmt.Sprintf("%x", crypted)
+	// Prepend IV to the ciphertext
+	cryptedWithIV := append(iv, crypted...)
+
+	hexStr := fmt.Sprintf("%x", cryptedWithIV)
 	return hexStr, nil
 }
 
@@ -124,11 +133,17 @@ func (d *DesEncrypt) desDecrypt(decodeStr string, key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Extract IV from the beginning of the ciphertext
+	iv := decodeBytes[:des.BlockSize]
+	decodeBytes = decodeBytes[des.BlockSize:]
+
 	block, err := des.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
-	blockMode := cipher.NewCBCDecrypter(block, key)
+
+	blockMode := cipher.NewCBCDecrypter(block, iv)
 
 	origData := make([]byte, len(decodeBytes))
 	blockMode.CryptBlocks(origData, decodeBytes)

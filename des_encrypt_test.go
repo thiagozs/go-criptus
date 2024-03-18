@@ -14,7 +14,7 @@ func TestDesSecret(t *testing.T) {
 	opts := []DESOptions{
 		DESWithKey(key),
 		DESWithSpecialSign(specialSign),
-		DESWithKeyType(DesEncrypt56),
+		DESWithKeyType(DesEncrypt64),
 	}
 
 	des, err := NewDesEncrypt(opts...)
