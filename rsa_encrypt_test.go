@@ -17,10 +17,10 @@ func TestRsaEncrypt(t *testing.T) {
 	sec, err := rsa.RsaEncrypt(secret, rsa.PublishKeyPath)
 	assert.NoError(t, err)
 
-	encriptedStr := rsa.EncryptString(sec)
-	srcByte := rsa.DecryptByte(encriptedStr)
+	toStr := rsa.ToString(sec)
+	toByte := rsa.ToByte(toStr)
 
-	ans, err := rsa.RsaDecrypt(srcByte, rsa.PrivateKeyPath)
+	ans, err := rsa.RsaDecrypt(toByte, rsa.PrivateKeyPath)
 	assert.NoError(t, err)
 
 	assert.Equal(t, secret, ans)

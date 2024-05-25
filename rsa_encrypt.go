@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"runtime"
 )
 
 const (
@@ -19,26 +20,18 @@ const (
 )
 
 type RsaEncrypt struct {
-	PublishKeyName string
-	PrivateKeyName string
-	PublishKeyPath string
-	PrivateKeyPath string
-	Kind           RsaBitsType
+	PublishKeyPath  string
+	PrivateKeyPath  string
+	OneTimeGenerate bool
+	Kind            RsaBitsType
 }
 
-func formatPubAndPriKeyName(name string) string {
-	return fmt.Sprintf("\\%s.pem", name)
-}
-
-func NewDefaultRsaEncrypt() *RsaEncrypt {
-	defaultPath, _ := os.Getwd()
-	return &RsaEncrypt{
-		Kind:           RsaBits1024,
-		PublishKeyName: formatPubAndPriKeyName(RsaDefaultPublishKeyName),
-		PrivateKeyName: formatPubAndPriKeyName(RsaDefaultPrivateKeyName),
-		PublishKeyPath: defaultPath + formatPubAndPriKeyName(RsaDefaultPublishKeyName),
-		PrivateKeyPath: defaultPath + formatPubAndPriKeyName(RsaDefaultPrivateKeyName),
+func formatName(name string) string {
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf("\\%s.pem", name)
 	}
+
+	return fmt.Sprintf("/%s.pem", name)
 }
 
 func NewRsaEncrypt(opts ...RSAOptions) (*RsaEncrypt, error) {
@@ -48,73 +41,104 @@ func NewRsaEncrypt(opts ...RSAOptions) (*RsaEncrypt, error) {
 		return nil, err
 	}
 
-	obj := NewDefaultRsaEncrypt()
-	if bits := params.GetBits(); bits == 0 {
-		obj.Kind = bits
+	defaultPath, _ := os.Getwd()
+
+	if len(params.GetPublishKeyPath()) == 0 {
+		params.SetPublishKeyPath(defaultPath +
+			formatName(RsaDefaultPublishKeyName))
 	}
 
-	if params.GetPublishKeyName() != "" {
-		obj.PublishKeyName = formatPubAndPriKeyName(params.GetPublishKeyName())
+	if len(params.GetPrivateKeyPath()) == 0 {
+		params.SetPrivateKeyPath(defaultPath +
+			formatName(RsaDefaultPrivateKeyName))
 	}
 
-	if params.GetPublishKeyPath() != "" {
-		obj.PublishKeyPath = params.GetPublishKeyPath() +
-			formatPubAndPriKeyName(params.GetPublishKeyName())
+	if params.GetBits() == 0 {
+		params.SetBits(RsaBits1024)
 	}
 
-	if params.GetPrivateKeyName() != "" {
-		obj.PrivateKeyName = formatPubAndPriKeyName(params.GetPrivateKeyName())
-	}
-
-	if params.GetPrivateKeyPath() != "" {
-		obj.PrivateKeyPath = params.GetPrivateKeyPath() +
-			formatPubAndPriKeyName(params.GetPrivateKeyName())
-	}
-
-	return obj, nil
+	return &RsaEncrypt{
+		PublishKeyPath: params.GetPublishKeyPath(),
+		PrivateKeyPath: params.GetPrivateKeyPath(),
+		Kind:           params.GetBits(),
+	}, nil
 }
 
 func (r *RsaEncrypt) SaveRsaKey() error {
-	privateKey, err := rsa.GenerateKey(rand.Reader, r.Kind.Bits())
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	publicKey := privateKey.PublicKey
+	var privateKey *rsa.PrivateKey
+	var publicKey *rsa.PublicKey
 
-	x509PrivateBytes := x509.MarshalPKCS1PrivateKey(privateKey)
-	x509PublicBytes := x509.MarshalPKCS1PublicKey(&publicKey)
-
-	blockPrivate := pem.Block{Type: PrivateKey, Bytes: x509PrivateBytes}
-	blockPublic := pem.Block{Type: PublishKey, Bytes: x509PublicBytes}
-
-	privateFile, errPri := os.Create(r.PrivateKeyPath)
-	if errPri != nil {
-		return errPri
-	}
-
-	defer func(privateFile *os.File) {
-		errClose := privateFile.Close()
-		if errClose != nil {
-			panic(errClose)
+	if _, err := os.Stat(r.PublishKeyPath); err == nil {
+		// Load the existing public key
+		publicKeyBytes, err := os.ReadFile(r.PublishKeyPath)
+		if err != nil {
+			return err
 		}
-	}(privateFile)
-
-	err = pem.Encode(privateFile, &blockPrivate)
-	if err != nil {
-		return err
+		block, _ := pem.Decode(publicKeyBytes)
+		if block == nil || block.Type != PublishKey {
+			return fmt.Errorf("failed to decode PEM block containing public key")
+		}
+		pubKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+		if err != nil {
+			return err
+		}
+		publicKey = pubKey
 	}
 
-	publicFile, errPub := os.Create(r.PublishKeyPath)
-	if errPub != nil {
-		return errPub
+	if _, err := os.Stat(r.PrivateKeyPath); err == nil {
+		// Load the existing private key
+		privateKeyBytes, err := os.ReadFile(r.PrivateKeyPath)
+		if err != nil {
+			return err
+		}
+		block, _ := pem.Decode(privateKeyBytes)
+		if block == nil || block.Type != PrivateKey {
+			return fmt.Errorf("failed to decode PEM block containing private key")
+		}
+		priKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return err
+		}
+		privateKey = priKey
 	}
 
-	defer publicFile.Close()
+	// If keys are not loaded, generate new ones
+	if privateKey == nil || publicKey == nil {
+		privateKey, err := rsa.GenerateKey(rand.Reader, r.Kind.Bits())
+		if err != nil {
+			return err
+		}
 
-	err = pem.Encode(publicFile, &blockPublic)
-	if err != nil {
-		return err
+		publicKey = &privateKey.PublicKey
+
+		x509PrivateBytes := x509.MarshalPKCS1PrivateKey(privateKey)
+		x509PublicBytes := x509.MarshalPKCS1PublicKey(publicKey)
+
+		blockPrivate := pem.Block{Type: PrivateKey, Bytes: x509PrivateBytes}
+		blockPublic := pem.Block{Type: PublishKey, Bytes: x509PublicBytes}
+
+		privateFile, err := os.Create(r.PrivateKeyPath)
+		if err != nil {
+			return err
+		}
+
+		defer privateFile.Close()
+
+		err = pem.Encode(privateFile, &blockPrivate)
+		if err != nil {
+			return err
+		}
+
+		publicFile, err := os.Create(r.PublishKeyPath)
+		if err != nil {
+			return err
+		}
+
+		defer publicFile.Close()
+
+		if err := pem.Encode(publicFile, &blockPublic); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -138,14 +162,14 @@ func (r *RsaEncrypt) RsaEncrypt(src, filePath string) ([]byte, error) {
 
 	block, _ := pem.Decode(keyBytes)
 
-	publicKey, errPb := x509.ParsePKCS1PublicKey(block.Bytes)
-	if errPb != nil {
-		return nil, errPb
+	publicKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
 	}
 
-	retByte, errRet := rsa.EncryptPKCS1v15(rand.Reader, publicKey, srcByte)
-	if errRet != nil {
-		return nil, errRet
+	retByte, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey, srcByte)
+	if err != nil {
+		return nil, err
 	}
 	return retByte, nil
 }
@@ -179,11 +203,11 @@ func (r *RsaEncrypt) RsaDecrypt(srcByte []byte, filePath string) (string, error)
 	return string(retByte), nil
 }
 
-func (r *RsaEncrypt) EncryptString(retByte []byte) string {
+func (r *RsaEncrypt) ToString(retByte []byte) string {
 	return base64.StdEncoding.EncodeToString(retByte)
 }
 
-func (r *RsaEncrypt) DecryptByte(src string) []byte {
+func (r *RsaEncrypt) ToByte(src string) []byte {
 	b, _ := base64.StdEncoding.DecodeString(src)
 	return b
 }

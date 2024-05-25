@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	secret := "this is a secret"
+	content := "this is a secret"
 
 	rsa, err := criptus.NewRsaEncrypt()
 	if err != nil {
@@ -20,21 +20,21 @@ func main() {
 		return
 	}
 
-	sec, err := rsa.RsaEncrypt(secret, rsa.PublishKeyPath)
+	sec, err := rsa.RsaEncrypt(content, rsa.PublishKeyPath)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return
 	}
 
-	encriptedStr := rsa.EncryptString(sec)
-	srcByte := rsa.DecryptByte(encriptedStr)
+	toStr := rsa.ToString(sec)
+	toByte := rsa.ToByte(toStr)
 
-	ans, err := rsa.RsaDecrypt(srcByte, rsa.PrivateKeyPath)
+	ans, err := rsa.RsaDecrypt(toByte, rsa.PrivateKeyPath)
 	if err != nil {
 		fmt.Println("Error: ", err)
 		return
 	}
 
-	fmt.Printf("Encrypted: %s\n", encriptedStr)
+	fmt.Printf("Encrypted: %s\n", toStr)
 	fmt.Printf("Decrypted: %s\n", ans)
 }
