@@ -7,34 +7,32 @@ import (
 )
 
 func main() {
-	content := "this is a secret"
-
-	rsa, err := criptus.NewRsaEncrypt()
+	// Cria a instância do RsaEncrypt.
+	rsaEnc, err := criptus.NewRsaEncrypt()
 	if err != nil {
-		fmt.Println("Error: ", err)
-		return
+		panic(err)
 	}
 
-	if err := rsa.SaveRsaKey(); err != nil {
-		fmt.Println("Error: ", err)
-		return
+	// Gera as chaves RSA (se já não existirem, elas serão criadas)
+	if err := rsaEnc.GenerateKeys(); err != nil {
+		panic(err)
 	}
 
-	sec, err := rsa.RsaEncrypt(content, rsa.PublishKeyPath)
+	mensagem := "Olá, mundo!"
+
+	// Criptografa utilizando a chave pública
+	cipherText, err := rsaEnc.Encrypt(mensagem, rsaEnc.PublicKeyPath)
 	if err != nil {
-		fmt.Println("Error: ", err)
-		return
+		panic(err)
 	}
 
-	toStr := rsa.ToString(sec)
-	toByte := rsa.ToByte(toStr)
+	fmt.Printf("Mensagem criptografada: %s\n", rsaEnc.EncodeBase64(cipherText))
 
-	ans, err := rsa.RsaDecrypt(toByte, rsa.PrivateKeyPath)
+	// Descriptografa utilizando a chave privada
+	plainText, err := rsaEnc.Decrypt(cipherText, rsaEnc.PrivateKeyPath)
 	if err != nil {
-		fmt.Println("Error: ", err)
-		return
+		panic(err)
 	}
 
-	fmt.Printf("Encrypted: %s\n", toStr)
-	fmt.Printf("Decrypted: %s\n", ans)
+	fmt.Printf("Mensagem descriptografada: %s\n", plainText)
 }

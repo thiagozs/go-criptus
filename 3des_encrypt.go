@@ -10,6 +10,26 @@ import (
 	"github.com/spf13/cast"
 )
 
+type TripleKeyType int
+
+const (
+	TripleEncrypt128 TripleKeyType = iota // For 128-bit (16 bytes), typically structured as K1, K2, K1
+	TripleEncrypt192                      // For 192-bit (24 bytes), structured as K1, K2, K3
+)
+
+func (a TripleKeyType) String() string {
+	return [...]string{"3DES-128", "3DES-192"}[a]
+}
+
+func (a TripleKeyType) Length() int {
+	// 16 bytes for 128-bit, 24 bytes for 192-bit
+	return [...]int{16, 24}[a]
+}
+
+func (a TripleKeyType) Block() int {
+	return 8 // 3DES block size is 8 bytes for both key lengths
+}
+
 type TripleDesEncrypt struct {
 	SpecialSign string
 	Key         string

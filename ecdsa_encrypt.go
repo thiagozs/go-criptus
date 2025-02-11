@@ -11,6 +11,28 @@ import (
 	"math/big"
 )
 
+type EllipticCurveType int
+
+const (
+	EllipticCurveP224 EllipticCurveType = iota
+	EllipticCurveP256
+	EllipticCurveP384
+	EllipticCurveP521
+)
+
+func (e EllipticCurveType) String() string {
+	return [...]string{"P224", "P256", "P384", "P521"}[e]
+}
+
+func (e EllipticCurveType) Bits() int {
+	return [...]int{224, 256, 384, 521}[e]
+}
+
+func (e EllipticCurveType) Curve() elliptic.Curve {
+	return [...]elliptic.Curve{elliptic.P224(), elliptic.P256(),
+		elliptic.P384(), elliptic.P521()}[e]
+}
+
 type EllipticCurve struct {
 	pubKeyCurve elliptic.Curve
 	privateKey  *ecdsa.PrivateKey

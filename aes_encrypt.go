@@ -11,6 +11,43 @@ import (
 	"github.com/spf13/cast"
 )
 
+type AesModeType int
+type AesKeyType int
+
+const (
+	IVLength int = 16
+)
+
+const (
+	AesEncrypt128 AesKeyType = iota
+	AesEncrypt192
+	AesEncrypt256
+)
+
+func (a AesKeyType) String() string {
+	return [...]string{"AES-128", "AES-192", "AES-256"}[a]
+}
+
+func (a AesKeyType) Length() int {
+	return [...]int{16, 24, 32}[a]
+}
+
+func (a AesKeyType) Uint64() uint64 {
+	return [...]uint64{128, 192, 256}[a]
+}
+
+const (
+	AesModeTypeCBC AesModeType = iota // Cipher Block Chaining
+	AesModeTypeCFB                    // Cipher FeedBack
+	AesModeTypeCTR                    // Counter
+	AesModeTypeOFB                    // Output FeedBack
+	AesModeTypeECB                    // Electronic Codebook
+)
+
+func (a AesModeType) String() string {
+	return [...]string{"CBC", "CFB", "CTR", "OFB", "ECB"}[a]
+}
+
 type AesEncrypt struct {
 	// Encryption and decryption will be based on this string
 	// of characters, if not, it will be based on AesBaseSpecialSign.

@@ -12,6 +12,20 @@ import (
 	"github.com/spf13/cast"
 )
 
+type DesKeyType int
+
+const (
+	DesEncrypt64 DesKeyType = iota
+)
+
+func (a DesKeyType) String() string {
+	return [...]string{"DES-64"}[a]
+}
+
+func (a DesKeyType) Length() int {
+	return [...]int{8}[a]
+}
+
 type DesEncrypt struct {
 	SpecialSign string // Encryption and decryption will be based on this string of characters, if not, it will be based on DesBaseSpecialSign.
 	Key         string // Key, it is recommended to use a 5-8 digit key
